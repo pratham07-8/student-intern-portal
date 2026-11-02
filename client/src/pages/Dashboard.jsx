@@ -16,6 +16,35 @@ const Dashboard = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [toastMessage, setToastMessage] = useState('');
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  const downloadLetter = async (requestId, traineeName) => {
+    try {
+      setDownloadingId(requestId);
+      const res = await axios.get(`${API_BASE_URL}/Review/${requestId}/letter`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      window.open(blobUrl, '_blank');
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const safeName = (traineeName || 'Trainee').replace(/[^a-zA-Z0-9_-]/g, '_');
+      link.download = `Internship_Letter_${safeName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Download Letter Error:', err);
+      alert('Failed to download training letter.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
   const [signature, setSignature] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -260,9 +289,20 @@ const Dashboard = () => {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold rounded-full">
-                    Action Required
-                  </span>
+                  {selectedRequest.status === 'APPROVED' ? (
+                    <button
+                      type="button"
+                      onClick={() => downloadLetter(selectedRequest.id, selectedRequest.trainee?.full_name)}
+                      disabled={downloadingId === selectedRequest.id}
+                      className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-700 font-bold text-xs rounded-xl transition flex items-center gap-1 shadow-xs cursor-pointer"
+                    >
+                      <span>📄</span> {downloadingId === selectedRequest.id ? 'Loading...' : 'View Letter (PDF)'}
+                    </button>
+                  ) : (
+                    <span className="px-3 py-1 bg-amber-50 border border-amber-200 text-amber-700 text-xs font-bold rounded-full">
+                      Action Required
+                    </span>
+                  )}
                   <button
                     onClick={() => setShowDeleteModal(true)}
                     className="px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 font-bold text-xs rounded-xl transition flex items-center gap-1 shadow-sm"

@@ -353,3 +353,54 @@ export const deleteRequest = async (req, res) => {
   }
 };
 
+// Download or view the official training letter PDF
+export const downloadLetter = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const requestId = parseInt(id, 10);
+
+    if (isNaN(requestId)) {
+      return res.status(400).json({ success: false, message: "Invalid request ID" });
+    }
+
+    const request = await prisma.training_request.findUnique({
+      where: { id: requestId },
+      include: {
+        trainee: true,
+        guide: true,
+        proposer: { select: { id: true, name: true, email: true, department: true } }
+      }
+    });
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Application not found" });
+    }
+
+    if (request.status !== "APPROVED") {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Training letter is only issued once the application has been APPROVED by the HR GM." 
+      });
+    }
+
+    // Generate formal PDF letter
+    const pdfBuffer = await generateTrainingLetterPDF(
+      request.trainee,
+      request.guide,
+      request.proposer,
+      null,
+      request.hr_signature
+    );
+
+    const safeName = (request.trainee?.full_name || 'Trainee').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `Internship_Letter_${safeName}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    return res.send(pdfBuffer);
+  } catch (err) {
+    console.error("Download Letter Error:", err);
+    return res.status(500).json({ success: false, message: "Failed to generate training letter PDF" });
+  }
+};

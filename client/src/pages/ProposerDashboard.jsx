@@ -17,6 +17,37 @@ const ProposerDashboard = () => {
   const [requestToDelete, setRequestToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState('');
+  const [downloadingId, setDownloadingId] = useState(null);
+
+  const downloadLetter = async (requestId, traineeName) => {
+    try {
+      setDownloadingId(requestId);
+      const res = await axios.get(`${API_BASE_URL}/Review/${requestId}/letter`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob'
+      });
+
+      const blob = new Blob([res.data], { type: 'application/pdf' });
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      // Open preview in new browser tab
+      window.open(blobUrl, '_blank');
+
+      // Trigger automatic file download
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const safeName = (traineeName || 'Trainee').replace(/[^a-zA-Z0-9_-]/g, '_');
+      link.download = `Internship_Letter_${safeName}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Download Letter Error:', err);
+      alert('Failed to download training letter. Please ensure the application is APPROVED.');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   const toggleRow = (id) => {
     setExpandedRequestId(expandedRequestId === id ? null : id);
@@ -191,16 +222,32 @@ const ProposerDashboard = () => {
                         {new Date(request.submitted_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRequestToDelete(request);
-                          }}
-                          className="px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 hover:text-red-700 font-bold text-xs rounded-lg transition shadow-sm"
-                          title="Delete Application"
-                        >
-                          🗑️ Delete
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          {request.status === 'APPROVED' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                downloadLetter(request.id, request.trainee?.full_name);
+                              }}
+                              disabled={downloadingId === request.id}
+                              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-700 hover:text-emerald-800 font-bold text-xs rounded-lg transition shadow-xs flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                              title="View & Download Official Training Letter PDF"
+                            >
+                              <span>📄</span> {downloadingId === request.id ? 'Loading...' : 'Letter'}
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRequestToDelete(request);
+                            }}
+                            className="px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 hover:text-red-700 font-bold text-xs rounded-lg transition shadow-sm cursor-pointer"
+                            title="Delete Application"
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                     
@@ -209,6 +256,27 @@ const ProposerDashboard = () => {
                         <td colSpan={7} className="px-6 py-6 border-b border-slate-100">
                           <div className="max-w-4xl mx-auto">
                             <WorkflowStepper status={request.status} theme="light" />
+                            
+                            {request.status === 'APPROVED' && (
+                              <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left shadow-xs">
+                                <div>
+                                  <h4 className="text-sm font-bold text-emerald-900 flex items-center gap-2">
+                                    <span>🎉</span> Official Training Letter Approved & Issued
+                                  </h4>
+                                  <p className="text-xs text-emerald-700 mt-1">
+                                    Signed by the HR General Manager. The letter has been emailed to you and can also be opened or downloaded below.
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => downloadLetter(request.id, request.trainee?.full_name)}
+                                  disabled={downloadingId === request.id}
+                                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md shadow-emerald-600/20 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap disabled:opacity-50"
+                                >
+                                  <span>📥</span> {downloadingId === request.id ? 'Generating...' : 'View / Download PDF'}
+                                </button>
+                              </div>
+                            )}
                             
                             {request.remarks && (
                               <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-2xl text-left">
