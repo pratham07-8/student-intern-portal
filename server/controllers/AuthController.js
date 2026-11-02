@@ -29,9 +29,13 @@ export const signup = async (req, res) => {
       return res.status(400).json({ success: false, message: "Email is already registered" });
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    // =========================================================================
+    // DEMO OTP VERIFICATION:
+    // Fixed / demo code is "123456" so you do not have to wait for email OTP
+    // arrival during presentations and evaluations.
+    // =========================================================================
+    const demoOtp = "123456";
+    const otpExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h validity for smooth presentations
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
@@ -47,13 +51,13 @@ export const signup = async (req, res) => {
           password: hashedPassword,
           role,
           department: role === "GUIDE_GM" ? department : null,
-          otp,
+          otp: demoOtp,
           otp_expiry: otpExpiry,
-          is_verified: false,
+          is_verified: false, // OTP screen will verify this with 123456
         },
       });
     } else {
-      // Create new unverified user
+      // Create new user (pending demo OTP verification)
       user = await prisma.user.create({
         data: {
           name,
@@ -61,27 +65,33 @@ export const signup = async (req, res) => {
           password: hashedPassword,
           role,
           department: role === "GUIDE_GM" ? department : null,
-          otp,
+          otp: demoOtp,
           otp_expiry: otpExpiry,
           is_verified: false,
         },
       });
     }
 
-    // Send OTP Email with max 4s timeout so the UI never freezes
+    // =========================================================================
+    // [PRODUCTION REAL EMAIL OTP DISPATCH]
+    // (Preserved & saved below - uncomment when full live email delivery is needed)
+    // =========================================================================
+    /*
     try {
       await Promise.race([
-        sendOTPEmail(email, otp, name),
+        sendOTPEmail(email, demoOtp, name),
         new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), 4000))
       ]);
     } catch (err) {
       console.error('[EMAIL ERROR]', err);
     }
+    */
 
     return res.status(200).json({
       success: true,
       otpRequired: true,
-      message: "Verification OTP has been sent to your email.",
+      demoOtp: "123456",
+      message: "Verification code sent! (Demo Mode: Enter 123456)",
       email: user.email,
     });
   } catch (err) {
@@ -107,6 +117,27 @@ export const login = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid email or password" });
     }
 
+    // =========================================================================
+    // DEMO VERIFICATION SAFETY:
+    // If account was created in a test but unverified, auto-verify it during login
+    // so presentation is never disrupted by re-verification hurdles.
+    // =========================================================================
+    if (!user.is_verified) {
+      await prisma.user.update({
+        where: { email },
+        data: {
+          is_verified: true,
+          otp: null,
+          otp_expiry: null,
+        },
+      });
+    }
+
+    // =========================================================================
+    // [PRODUCTION STRICT VERIFICATION CHECK]
+    // (Preserved & saved below - uncomment when production strict mode is active)
+    // =========================================================================
+    /*
     if (!user.is_verified) {
       return res.status(400).json({
         success: false,
@@ -114,6 +145,7 @@ export const login = async (req, res) => {
         unverified: true,
       });
     }
+    */
 
     // Check password
     const isMatch = await bcrypt.compare(password, user.password);
@@ -162,19 +194,28 @@ export const verifyOTP = async (req, res) => {
       return res.status(400).json({ success: false, message: "User not found" });
     }
 
-    if (user.is_verified) {
-      return res.status(400).json({ success: false, message: "Email is already verified" });
+    // =========================================================================
+    // DEMO OTP VERIFICATION CHECK:
+    // Accepts "123456", "000000", or the database OTP for fast presentation demo.
+    // =========================================================================
+    const isDemoOtp = otp === "123456" || otp === "000000" || (user.otp && user.otp === otp);
+
+    if (!isDemoOtp) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid OTP code. In Demo Mode, please enter 123456." 
+      });
     }
 
-    // Check OTP
-    if (user.otp !== otp) {
-      return res.status(400).json({ success: false, message: "Invalid OTP code" });
-    }
-
-    // Check OTP expiry
-    if (new Date() > new Date(user.otp_expiry)) {
+    // =========================================================================
+    // [PRODUCTION STRICT EXPIRY CHECK]
+    // (Preserved & saved below - uncomment when strict expiration is needed)
+    // =========================================================================
+    /*
+    if (user.otp_expiry && new Date() > new Date(user.otp_expiry)) {
       return res.status(400).json({ success: false, message: "OTP has expired. Please sign up again to receive a new OTP." });
     }
+    */
 
     // Mark user as verified
     await prisma.user.update({

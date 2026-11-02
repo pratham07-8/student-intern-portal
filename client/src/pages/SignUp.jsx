@@ -19,8 +19,9 @@ const SignUp = () => {
 
   // OTP State
   const [showOtpScreen, setShowOtpScreen] = useState(false);
-  const [otp, setOtp] = useState('');
+  const [otp, setOtp] = useState('123456');
   const [registeredEmail, setRegisteredEmail] = useState('');
+  const [demoOtp, setDemoOtp] = useState('123456');
 
   const roles = [
     { value: 'PROPOSER', label: 'Proposer (Intern Coordinator)' },
@@ -74,8 +75,11 @@ const SignUp = () => {
     if (res.success) {
       if (res.otpRequired) {
         setRegisteredEmail(res.email);
+        const code = res.demoOtp || '123456';
+        setDemoOtp(code);
+        setOtp(code);
         setShowOtpScreen(true);
-        setSuccess('OTP verification code sent to your email.');
+        setSuccess(`Demo Verification Mode: Pre-filled with code ${code}.`);
       } else {
         setSuccess('Account created successfully! Redirecting to login...');
         setTimeout(() => navigate('/login'), 2000);
@@ -121,9 +125,24 @@ const SignUp = () => {
           {showOtpScreen ? (
             <>
               <h3 className="text-xl font-semibold text-slate-800 mb-2 text-center">Verify Your Email</h3>
-              <p className="text-sm text-slate-500 mb-6 text-center">
+              <p className="text-sm text-slate-500 mb-4 text-center">
                 We've sent a 6-digit verification code to <span className="font-semibold text-slate-700">{registeredEmail}</span>
               </p>
+
+              {/* Demo Mode Quick-Fill Banner for Presentations */}
+              <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3 text-xs mb-4 flex items-center justify-between shadow-xs">
+                <span>💡 <strong>Demo Mode:</strong> Use code <code className="bg-amber-100 px-1.5 py-0.5 rounded font-mono font-bold text-amber-800">{demoOtp}</code></span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtp(demoOtp);
+                    setError('');
+                  }}
+                  className="ml-2 px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs transition"
+                >
+                  Auto-Fill {demoOtp}
+                </button>
+              </div>
 
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm mb-4">

@@ -199,6 +199,14 @@ const Login = () => {
                 >
                   ↻
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setCaptchaInput(captchaCode)}
+                  className="px-2.5 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-xs rounded-xl transition duration-150 font-semibold cursor-pointer shadow-xs"
+                  title="Auto-fill CAPTCHA for presentation demo"
+                >
+                  ⚡ Fill
+                </button>
               </div>
               <input
                 type="text"

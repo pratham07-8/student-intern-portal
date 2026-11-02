@@ -40,7 +40,12 @@ export function AuthProvider({ children }) {
     try {
       const res = await axios.post(`${API_BASE_URL}/auth/signup`, { name, email, password, role, department });
       if (res.data.success) {
-        return { success: true, otpRequired: res.data.otpRequired, email: res.data.email };
+        return { 
+          success: true, 
+          otpRequired: res.data.otpRequired, 
+          email: res.data.email,
+          demoOtp: res.data.demoOtp || '123456'
+        };
       }
       return { success: false, message: res.data.message || 'Registration failed' };
     } catch (err) {
