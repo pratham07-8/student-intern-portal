@@ -35,7 +35,7 @@ flowchart TD
 
 ### 1️⃣ Flow 1: Authentication & User Registration
 1. User registers via `/signup` specifying their name, official email, role, department, designation, and password.
-2. A 6-digit OTP is generated and dispatched for email verification.
+2. A 6-digit OTP verification screen appears to validate account credentials.
 3. User logs in at `/login` receiving a signed JSON Web Token (JWT).
 4. Based on role permissions:
    - **PROPOSER** is routed to `/proposer-dashboard`.
@@ -77,6 +77,16 @@ Reviewers log in to their dashboard (`/dashboard`) where only applications requi
 * Both **Proposers** (on `ProposerDashboard`) and **Reviewers** (on `Dashboard`) have access to a 🗑️ **Delete Application** option.
 * Clicking **Delete** opens a confirmation modal prompt.
 * Upon confirmation, the backend executes an atomic Prisma `$transaction` that cleanly removes the `training_request`, `trainee`, and `guide` database records.
+
+---
+
+## ⚡ Demo & Presentation Mode
+
+For live project demonstrations and academic evaluation presentations:
+- **Instant Demo OTP**: When registering a new account, the OTP verification screen is pre-filled with demo code `123456`, plus a 1-click **Auto-Fill 123456** button.
+- **Fast CAPTCHA Fill**: Click **⚡ Fill** next to the CAPTCHA canvas on the Login screen to instantly populate the verification code.
+- **Uninterrupted Role Switching**: Logging in automatically activates unverified demo test accounts so switching between multiple reviewer roles is seamless.
+- **Production Email Mode**: The real email sending pipeline (`sendOTPEmail`) and strict expiration logic are preserved in `server/controllers/AuthController.js` and can be toggled on anytime.
 
 ---
 
@@ -147,9 +157,9 @@ npm run dev
 
 | Method | Endpoint | Description | Auth Required |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/auth/signup` | Register a new user & trigger OTP email | ❌ No |
+| `POST` | `/auth/signup` | Register a new user & trigger OTP verification | ❌ No |
 | `POST` | `/auth/login` | Login user & return JWT token | ❌ No |
-| `POST` | `/auth/verify-otp` | Verify 6-digit email OTP | ❌ No |
+| `POST` | `/auth/verify-otp` | Verify 6-digit email OTP (Demo: `123456`) | ❌ No |
 | `GET` | `/Review` | Fetch requests (filtered by user role & department) | ✅ Yes |
 | `POST` | `/Review` | Submit a new student internship training request | ✅ Yes |
 | `POST` | `/Review/:id/action` | Multi-level approval / rejection / send-back | ✅ Yes |
